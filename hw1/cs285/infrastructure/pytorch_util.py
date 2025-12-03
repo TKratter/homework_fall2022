@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Union
 
 import torch
@@ -47,7 +48,18 @@ def build_mlp(
 
     # TODO: return a MLP. This should be an instance of nn.Module
     # Note: nn.Sequential is an instance of nn.Module.
-    raise NotImplementedError
+
+    layers = []
+    in_dim = input_size
+    for _ in range(n_layers):
+        layers.append(nn.Linear(in_dim, size))
+        layers.append(deepcopy(activation))
+        in_dim = size
+
+    layers.append(nn.Linear(in_dim, output_size))
+    layers.append(output_activation)
+
+    return nn.Sequential(*layers)
 
 
 device = None
