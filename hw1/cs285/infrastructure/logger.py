@@ -28,8 +28,21 @@ class Logger:
 
     def log_paths_as_videos(self, paths, step, max_videos_to_save=2, fps=10, video_title='video'):
 
-        # reshape the rollouts
-        videos = [np.transpose(p['image_obs'][:, 0], [0, 3, 1, 2]) for p in paths]
+        # reshape the rollouts; skip any paths without image observations
+        videos = []
+        for p in paths:
+            img = p.get('image_obs', None)
+            if img is None or img.size == 0:
+                continue
+            # normalize dims to [T, 1, H, W, C]
+            if img.ndim == 4:  # [T, H, W, C]
+                img = img[:, None]
+            elif img.ndim != 5:
+                continue
+            videos.append(np.transpose(img[:, 0], [0, 3, 1, 2]))
+        if len(videos) == 0:
+            print('No image observations to log.')
+            return
 
         # max rollout length
         max_videos_to_save = np.min([max_videos_to_save, len(videos)])
@@ -68,7 +81,6 @@ class Logger:
 
     def flush(self):
         self._summ_writer.flush()
-
 
 
 

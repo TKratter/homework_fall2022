@@ -80,6 +80,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         else:
             observation = obs[None]
 
+        # TODO return the action that the policy prescribes
         observation = ptu.from_numpy(observation)
         with torch.no_grad():
             if self.discrete:
@@ -121,6 +122,7 @@ class MLPPolicySL(MLPPolicy):
             self, observations, actions,
             adv_n=None, acs_labels_na=None, qvals=None
     ):
+        # TODO: update the policy and return the loss
         observations = ptu.from_numpy(observations)
         actions = ptu.from_numpy(actions)
 
@@ -134,7 +136,6 @@ class MLPPolicySL(MLPPolicy):
             loss = self.loss(pred_actions, actions)
         loss.backward()
         self.optimizer.step()
-
         return {
             # You can add extra logging information here, but keep this line
             'Training Loss': ptu.to_numpy(loss),

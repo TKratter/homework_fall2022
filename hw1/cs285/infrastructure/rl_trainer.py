@@ -167,7 +167,12 @@ class RL_Trainer(object):
         if itr == 0 and load_initial_expertdata is not None:
             with open(load_initial_expertdata, 'rb') as f:
                 paths = pickle.load(f)
-            return paths, 0, None
+            train_video_paths = None
+            if self.log_video:
+                print('\nCollecting train rollouts to be used for saving videos...')
+                train_video_paths = utils.sample_n_trajectories(
+                    self.env, collect_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
+            return paths, 0, train_video_paths
 
         # TODO collect `batch_size` samples to be used for training
         # HINT1: use sample_trajectories from utils
@@ -197,6 +202,10 @@ class RL_Trainer(object):
             # HINT1: use the agent's sample function
             # HINT2: how much data = self.params['train_batch_size']
             ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = self.agent.sample(self.params['train_batch_size'])
+
+            # TODO use the sampled data to train an agent
+            # HINT: use the agent's train function
+            # HINT: keep the agent's training log for debugging
 
             train_log = self.agent.train(ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch)
             all_logs.append(train_log)

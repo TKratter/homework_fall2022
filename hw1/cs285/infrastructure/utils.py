@@ -20,10 +20,48 @@ def sample_trajectory(env, policy, max_path_length, render=False):
 
         # render image of the simulated env
         if render:
-            if hasattr(env, 'sim'):
-                image_obs.append(env.sim.render(camera_name='track', height=500, width=500)[::-1])
-            else:
-                image_obs.append(env.render())
+            frame = None
+
+            # helper to try multiple render calls on a target env
+            def try_render(target):
+                f = None
+                try:
+                    f = target.render()
+                except Exception:
+                    f = None
+                if f is None:
+                    try:
+                        f = target.render(mode='rgb_array')
+                    except Exception:
+                        f = None
+                return f
+
+            # try render on env, then inner/env wrappers, then unwrapped
+            for candidate in (env, getattr(env, 'env', None), getattr(env, 'unwrapped', None)):
+                if candidate is None:
+                    continue
+                frame = try_render(candidate)
+                if frame is not None:
+                    break
+
+            # fallback to mujoco sim render if available
+            if frame is None and hasattr(env, 'sim'):
+                frame = env.sim.render(camera_name='track', height=500, width=500)
+                if frame is not None:
+                    frame = frame[::-1]  # flip vertical axis for mujoco
+            # try mujoco_renderer API if present
+            if frame is None and hasattr(env, 'mujoco_renderer'):
+                frame = env.mujoco_renderer.render(camera_name='track', depth=False)
+
+            # handle rgb_array_list from gymnasium
+            if isinstance(frame, (list, tuple)) and len(frame) > 0:
+                frame = frame[0]
+
+            # only append if we actually got a frame
+            if frame is not None:
+                frame = np.array(frame)
+                # add camera dimension to match logger expectation [T, 1, H, W, C]
+                image_obs.append(frame[None])
 
         # use the most recent ob to decide what to do
         obs.append(ob)
@@ -39,9 +77,8 @@ def sample_trajectory(env, policy, max_path_length, render=False):
         next_obs.append(ob)
         rewards.append(rew)
 
-        # TODO end the rollout if the rollout ended
-        # HINT: rollout can end due to done, or due to max_path_length
-        rollout_done = 1 if done else 0 # HINT: this is either 0 or 1
+        # End the rollout if the env says it's done or we hit the max length
+        rollout_done = 1 if (done or steps >= max_path_length) else 0
         terminals.append(rollout_done)
 
         if rollout_done:
@@ -76,7 +113,14 @@ def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False):
     """
     paths = []
 
-    TODO
+    for _ in range(ntraj):
+        path = sample_trajectory(
+            env=env,
+            policy=policy,
+            max_path_length=max_path_length,
+            render=render,
+        )
+        paths.append(path)
 
     return paths
 
